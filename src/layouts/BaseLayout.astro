@@ -10,7 +10,9 @@ import '../styles/global.css';
 		<meta name="generator" content={Astro.generator} />
 		<title>Astro</title>
 	</head>
-	<body>
-		<slot />
+	<body class="grid grid-rows-[auto_1fr_auto]">
+		<div>
+			<slot />
+		</div>
 	</body>
 </html>
