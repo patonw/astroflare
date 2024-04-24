@@ -3,6 +3,8 @@ import cloudflare from "@astrojs/cloudflare";
 import tailwind from "@astrojs/tailwind";
 import mdx from "@astrojs/mdx";
 
+import alpinejs from "@astrojs/alpinejs";
+
 // https://astro.build/config
 export default defineConfig({
   output: "hybrid",
@@ -11,8 +13,5 @@ export default defineConfig({
       enabled: true
     }
   }),
-  integrations: [
-    tailwind(),
-    mdx(),
-  ]
+  integrations: [tailwind(), mdx(), alpinejs()]
 });

@@ -13,10 +13,14 @@
     "postinstall": "command -v patchelf && patchelf --set-interpreter $(ldd node_modules/@cloudflare/workerd-linux-64/bin/workerd | grep -oh '/nix/store\\S*ld-linux\\S*') node_modules/@cloudflare/workerd-linux-64/bin/workerd"
   },
   "dependencies": {
+    "@astrojs/alpinejs": "^0.4.0",
     "@astrojs/check": "^0.5.10",
     "@astrojs/cloudflare": "^10.1.0",
     "@astrojs/mdx": "^2.3.1",
     "@astrojs/tailwind": "^5.1.0",
+    "@tailwindcss/typography": "^0.5.12",
+    "@types/alpinejs": "^3.13.10",
+    "alpinejs": "^3.13.9",
     "astro": "^4.6.1",
     "daisyui": "^4.10.2",
     "ramda": "^0.29.1",
