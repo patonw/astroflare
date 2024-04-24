@@ -1,0 +1,32 @@
+---
+import * as R from 'ramda';
+import { Image } from 'astro:assets';
+import { asDateString } from '../lib/data';
+
+const { articles } = Astro.props;
+---
+<div class="grid lg:grid-cols-2 content-around gap-8">
+{articles.map(article =>
+    <a href={`/article/${article.slug}`} class="card bg-base-100 shadow-xl hover:shadow-md">
+        <figure class=" aspect-[3/2]">
+            {article.data.image ?
+                <Image
+                    client:visible
+                    src={article.data.image}
+                    alt={article.slug} />
+                : <div class="w-full h-full glass" />
+            }
+        </figure>
+        <div class="card-body">
+            <h2 class="card-title">{article.data.title}</h2>
+            <p>{article.data.summary}</p>
+            <span class="text-right text-sm">{asDateString(article.data.pubDate)} </span>
+            <div class="card-actions justify-end">
+                {R.take(5, article.data.tags).map(tag => 
+                    <div class="badge badge-outline">{tag}</div> 
+                )}
+            </div>
+        </div>
+    </a>
+)}
+</div>

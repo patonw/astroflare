@@ -1,0 +1,61 @@
+---
+import { getCollection } from 'astro:content';
+import { type Article, asDateString } from '../../lib/data';
+import ContentLayout from '../../layouts/ContentLayout.astro';
+
+import Hero from '../../components/Hero.astro'
+
+export async function getStaticPaths() {
+    const articles = await getCollection('articles');
+
+    return articles.map(article => ({
+        params: { slug: article.slug },
+        props: { article },
+    }));
+}
+
+type Props = {
+    article: Article;
+}
+
+const { article } = Astro.props;
+const { Content } = await article.render();
+
+const { pubDate } = article.data;
+
+const isPublished = pubDate && pubDate < new Date();
+---
+
+<ContentLayout title={article.data.title} description={article.data.summary}>
+    <article>
+        <div class="rounded-box overflow-hidden mb-8">
+            <Hero bgImage={article.data.image} altText={article.data.altText}>
+                <h1 class="mb-5 text-5xl font-bold">{article.data.title}</h1>
+                <p class="mb-5 backdrop-blur-md backdrop-brightness-90 rounded-box p-4">{article.data.summary}</p>
+            </Hero>
+        </div>
+
+        <div class="mx-auto">
+            <div class="text-right">
+                {isPublished?
+                    asDateString(article.data.pubDate)
+                    : <div class="italic badge badge-warning badge-outline">Unpublished</div>
+                }
+                {article.data.modDate &&
+                    <div class="text-sm italic">
+                        Edited {asDateString(article.data.modDate)}
+                    </div>
+                }
+            </div>
+            <div class="prose md:prose-lg lg:prose-xl dark:prose-invert mb-16 mx-auto">
+                <Content/>
+            </div>
+            <div class="text-right">
+                Tags:
+                {article.data.tags.map(tag =>
+                    <a href={`/tag/${tag}`} class="badge badge-outline mx-1">{tag}</a>
+                )}
+            </div>
+        </div>
+    </article>
+</ContentLayout>

@@ -1,0 +1,18 @@
+---
+import { type LocalImageProps } from 'astro:assets';
+
+type Props = {
+    bgImage?: LocalImageProps | ImageMetadata;
+    altText?: string,
+};
+
+const { bgImage, altText } = Astro.props;
+---
+<div class="hero" style={{"background-image": `url(${bgImage?.src})`}}>
+    {Astro.slots.has('default') && <div class="hero-overlay bg-opacity-50" /> }
+    <div class="hero-content text-center text-neutral-content my-20 md:my-40">
+        <div class="max-w-sm lg:max-w-xl tooltip" data-tip={altText}>
+            <slot />
+        </div>
+    </div>
+</div>

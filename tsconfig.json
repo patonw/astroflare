@@ -1,8 +1,11 @@
 {
-"extends": "astro/tsconfigs/base",
-"compilerOptions": {
-    "types": [
-        "@cloudflare/workers-types/2023-07-01"
-    ]
-}
+    "extends": "astro/tsconfigs/base",
+    "compilerOptions": {
+        "types": [
+            "@cloudflare/workers-types/2023-07-01"
+        ],
+        "module": "ES2022",
+        "strictNullChecks": true,
+        "allowJs": true,
+    }
 }

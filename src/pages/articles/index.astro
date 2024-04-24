@@ -1,0 +1,17 @@
+---
+import * as R from 'ramda';
+import { getPublishedArticles } from '../../lib/data';
+import ContentLayout from '../../layouts/ContentLayout.astro';
+import ArticleGrid from '../../components/ArticleGrid.astro';
+
+import blackhole from '../../assets/images/blackhole-6281865_1920.jpg'
+import Hero from '../../components/Hero.astro'
+
+const articles = R.flatten(R.repeat(await getPublishedArticles(), 5));
+---
+
+<ContentLayout title="Articles">
+    <Hero bgImage={blackhole} slot="hero" />
+    <h1 class="text-center tracking-wide text-6xl font-bold mb-8">Articles</h1>
+    <ArticleGrid articles={articles} />
+</ContentLayout>
