@@ -1,0 +1,69 @@
+---
+const title="/dev/null"
+const links = [
+    {label: 'Home', path: '/'},
+    {label: 'Articles', path: '/articles'},
+];
+
+// TODO collect form data
+const tags = [
+    'Astro',
+    'NixOS',
+    'DevOps',
+];
+---
+<nav>
+    <div class="navbar bg-base-200 text-base-content hidden md:flex">
+        <div class="flex-1">
+            <a class="text-xl font-semibold">{title}</a>
+        </div>
+        <div class="flex-none">
+            <ul class="menu menu-horizontal px-1 flex-row-reverse">
+                {links.map(it => 
+                    <li><a href={it.path}>{it.label}</a></li>
+                )}
+                <li>
+                    <details>
+                    <summary>
+                        Tags
+                    </summary>
+                    <ul class="p-2 bg-base-200 rounded-t-none z-50">
+                        {tags.map(tag => 
+                            <li><a href={`/tags/${tag}`}>{tag}</a></li>
+                        )}
+                    </ul>
+                    </details>
+                </li>
+            </ul>
+        </div>
+    </div>
+    <nav class="flex md:hidden">
+        <div class="collapse collapse-arrow bg-base-200 rounded-none">
+            <input type="checkbox" /> 
+            <div class="collapse-title text-xl font-semibold font-medium text-info-content">
+                {title}
+            </div>
+            <div class="collapse-content"> 
+                <div class="flex-none">
+                    <ul class="menu px-1">
+                        {links.map(it => 
+                            <li><a href={it.path}>{it.label}</a></li>
+                        )}
+                        <li>
+                            <details>
+                            <summary>
+                                Tags
+                            </summary>
+                            <ul class="p-2 bg-base-200 rounded-t-none z-50">
+                                {tags.map(tag => 
+                                    <li><a href={`/tags/${tag}`}>{tag}</a></li>
+                                )}
+                            </ul>
+                            </details>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </nav>
+</nav>

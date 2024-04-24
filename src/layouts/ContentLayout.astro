@@ -1,0 +1,16 @@
+---
+import BaseLayout from './BaseLayout.astro';
+
+type Props = {
+	title: string,
+	description?: string,
+};
+---
+
+<BaseLayout {...Astro.props}>
+    <slot name="hero" />
+    <div class="mt-4 md:mt-8 mb-32 max-w-7xl mx-auto w-full px-4 md:px-24">
+        <slot />
+    </div>
+    <slot name="tail" />
+</BaseLayout>
