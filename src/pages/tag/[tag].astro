@@ -1,0 +1,27 @@
+---
+import * as R from 'ramda';
+import { type Article, getTagMap } from '../../lib/data';
+import ArticleGrid from '../../components/ArticleGrid.astro';
+import ContentLayout from '../../layouts/ContentLayout.astro';
+
+export async function getStaticPaths() {
+    const tags = await getTagMap();
+
+    return R.toPairs(tags).map(([tag,articles]) => ({
+        params: { tag },
+        props: { articles },
+    }));
+}
+
+type Props = {
+    articles: Article[];
+}
+
+const { tag } = Astro.params;
+const { articles } = Astro.props;
+
+console.log(articles)
+---
+<ContentLayout title={tag}>
+    <ArticleGrid articles={articles} />
+</ContentLayout>

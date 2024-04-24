@@ -36,3 +36,17 @@ export async function getPublishedArticles(): Promise<Article[]> {
       R.sort(byPubDate),
   )(articles);
 }
+
+export async function getTagMap(): Promise<Map<string, Article[]>> {
+    const articles = await getPublishedArticles();
+    const tags = {} as Map<string, Article[]>;
+
+    articles.forEach(article => {
+        article.data.tags.forEach(tag => {
+            tags[tag] = [...(tags[tag] ?? []), article]
+        });
+    });
+
+    // @ts-ignore
+    return R.map((articles: Article[]) => R.sort(byPubDate, articles))(tags);
+}

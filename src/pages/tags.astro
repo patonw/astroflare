@@ -1,0 +1,23 @@
+---
+import * as R from 'ramda';
+import { getTagMap } from '../lib/data';
+import ContentLayout from '../layouts/ContentLayout.astro';
+
+const tagMap = await getTagMap();
+---
+<ContentLayout title="All tags">
+    <h1 class="text-center tracking-wide text-6xl font-bold mb-8">Tags</h1>
+    <div>
+    {R.toPairs(tagMap).map(([tag, articles]) =>
+        <h4><a class="badge badge-outline" href={`/tag/${tag}`}>{tag}</a></h4>
+        <div>
+            <ul class="list-disc ml-6 mb-4">
+                {articles.map(article => 
+                    <li><a href={`/article/${article.slug}`}>{article.data.title}</a></li>
+                )}
+            </ul>
+        </div>
+    )}
+    </div>
+</ContentLayout>
+
