@@ -1,0 +1,37 @@
+---
+import * as R from 'ramda';
+import { type Page } from 'astro';
+import { type Article, getPublishedArticles } from '../../lib/data';
+import ContentLayout from '../../layouts/ContentLayout.astro';
+import ArticleGrid from '../../components/ArticleGrid.astro';
+
+export async function getStaticPaths({ paginate }) {
+    const articles = await getPublishedArticles();
+
+    return paginate(articles, { pageSize: 20 });
+}
+
+type Props = {
+    page: Page<Article>;
+};
+
+const { page } = Astro.props;
+const articles  = page.data;
+---
+
+<ContentLayout title="Articles">
+    <h1 class="text-center tracking-wide text-6xl font-bold mb-8">Articles</h1>
+
+    <ArticleGrid articles={articles} />
+
+    <div class="flex justify-center mt-8">
+        <div class="join">
+            {R.range(1, page.lastPage + 1).map(i =>
+                <a href={`/articles/${i}`}
+                    class={`join-item btn ${i === page.currentPage && 'btn-active'}`}>
+                    {i}
+                </a>
+            )}
+        </div>
+    </div>
+</ContentLayout>

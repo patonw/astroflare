@@ -13,5 +13,8 @@ export default defineConfig({
       enabled: true
     }
   }),
-  integrations: [tailwind(), mdx(), alpinejs()]
+  integrations: [tailwind(), mdx(), alpinejs()],
+  redirects: {
+    '/articles': '/articles/1'
+  }
 });
