@@ -1,0 +1,392 @@
+---
+slug: build-a-blog-2
+title: Building this blog (part 2)
+summary: in which I cobble together a chimera from spare parts and garden clippings
+tags:
+  - astrojs
+  - daisyui
+  - typescript
+  - frontend
+image: '/src/assets/images/library-desk.jpg'
+altText: "Traditional library with floor-to-ceiling bookcases, rolling ladder, large wooden desk, leather armchair, antique rug, warm lighting, high resolution textures, intellectual and inviting atmosphere | windows with tree outside : 0.5 | globe on desk : 1.0"
+pubDate: 2024-04-26
+---
+import Callout from '../../components/Callout.astro';
+
+<Callout info>
+This is not a tutorial, per se. For a comprehensive introduction to Astro, look at their tutorial: https://docs.astro.build/en/tutorial/0-introduction/
+</Callout>
+
+This is a follow-up to the [previous post](/article/build-a-blog-1) where we setup a development shell and initialize the project.
+This post will have a bit of overlap with the official tutorial, but I'm not going to rehash it or cover every difference, just the interesting bits.
+
+## Layout
+
+There isn't a technical difference between components and layouts in Astro. It's mostly a matter of how they're used. Layouts are typically used at the root of each page with content passed via the default slot.
+
+Let's start with a basic layout and expand from there.
+
+```astro
+---
+// src/layouts/ContentLayout.astro
+type Props = {
+	title: string,
+	description?: string,
+};
+const { title, description } = Astro.props;
+---
+
+<html lang="en">
+	<head>
+		<title>{title}</title>
+		<meta charset="utf-8" />
+		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+		<meta name="viewport" content="width=device-width" />
+		<meta name="generator" content={Astro.generator} />
+		<meta name="description" content={description} />
+	</head>
+	<body class="min-h-screen grid grid-rows-[auto_1fr_auto]">
+		<main>
+			<slot name="hero" />
+			<div class="mt-4 md:mt-8 mb-32 max-w-7xl mx-auto w-full px-4 md:px-24">
+				<slot />
+			</div>
+		</main>
+	</body>
+</html>
+```
+
+There isn't any content specified here. Nor is there a header, yet. We'll get to that 
+next.  For now, notice the two `<slot />` elements. The latter instance has no `name` attribute -- technically it defaults to "default". The slot named "hero" is outside the styled div.
+
+How to use this? In an astro page (e.g. `src/pages/index.astro`), import the layout and use it as an HTML element with children.
+
+```astro
+---
+// src/pages/index.astro
+import ContentLayout from "../layouts/ContentLayout.astro";
+import blackhole from '../assets/images/black-hole-circuit-wide.jpg'
+---
+
+<ContentLayout title="Home">
+	<div slot="hero"
+		class="hero min-h-[75vh]"
+		style={{"background-image": `url(${blackhole.src})`}} />
+
+	<h3 class="text-xl font-semibold mb-8">Hello world</h3>
+  Have a nice day!
+</ContentLayout>
+
+```
+
+The first child element is marked with `slot="hero"` so Astro uses it to replace the element `<slot name="hero />` in the layout. Since it's outside the style div, tagged with class `max-w-7xl`, it's allowed to span entire width of the screen. The hero element also has a class `hero` which is a daisyUI component [^hero].
+
+[^hero]: https://daisyui.com/components/hero/
+
+In contrast, the rest of the children passed to the layout aren't tagged with a particular slot. They all get sent to the default slot inside the inner div. If you set the browser window to different sizes you'll see that this reaches a maximum width and stays centered beyond that. Whereas the hero element will automatically zoom and crop itself to fill the entire width.
+
+<div class="artboard artboard-demo horizontal w-3/4 aspect-[4/3] mx-auto">TODO</div>
+
+## Navigation
+Let's add a navbar header to our layout. First create an empty file `src/components/Header.astro` and add import it into the layout. Since it should appear on every page, we'll add it to the main layout, rather than injecting it via a named slot like the hero element.
+
+```astro
+---
+// src/layouts/ContentLayout.astro
+import Header from '../components/Header.astro';
+…
+---
+
+<html lang="en">
+	…
+	<body class="min-h-screen grid grid-rows-[auto_1fr_auto]">
+		<Header />
+		<main>
+			<slot name="hero" />
+			<div class="mt-4 md:mt-8 mb-32 max-w-7xl mx-auto w-full px-4 md:px-24">
+				<slot />
+			</div>
+		</main>
+	</body>
+</html>
+```
+
+Pick a [navbar](https://daisyui.com/components/navbar/) from daisyUI that looks good and put the contents into `src/components/Header.astro`
+
+```astro
+<div class="navbar bg-base-100">
+  <div class="flex-1">
+    <a class="btn btn-ghost text-xl">daisyUI</a>
+  </div>
+  <div class="flex-none">
+    <ul class="menu menu-horizontal px-1">
+      <li><a href="/articles/1">Articles</a></li>
+      <li><a href="/">Home</a></li>
+    </ul>
+  </div>
+</div>
+```
+
+<div class="artboard artboard-demo horizontal w-3/4 aspect-[4/3] mx-auto">TODO</div>
+
+## Content Collections
+Setting up content collections in Astro is a breeze. Read Astro's docs to get started [^collections].
+This blog deviates from the standard implementation in some minor ways.
+
+[^collections]:https://docs.astro.build/en/tutorials/add-content-collections/
+
+First, data fetching and manipulation is centralized in `src/lib/data.ts`. This allows easy reuse among different pages. Also, we can isolate Typescript workarounds into `src/lib`, which are needed because Typescript is missing some key features to allow type checking of functional programming style expressions. Which is the other point of deviation.
+
+Using the Ramda FP library, we can express data manipulation pipelines succinctly:
+
+```typescript
+import { getCollection, type CollectionEntry } from 'astro:content';
+import * as R from 'ramda';
+
+export type Article = CollectionEntry<'articles'>;
+
+// @ts-ignore
+const byPubDate = R.descend(R.path(['data', 'pubDate']));
+const beforeToday = R.pathSatisfies((date: Date) => date < new Date(), ['data', 'pubDate']);
+
+export async function getPublishedArticles(): Promise<Article[]> {
+  const articles = await getCollection('articles');
+
+  return R.pipe(
+      // @ts-ignore
+      R.filter(R.path(['data', 'pubDate'])),
+      R.filter(beforeToday),
+      R.sort(byPubDate),
+  )(articles);
+}
+```
+
+Unlike lodash, ramda's API is designed to make composibility frictionless. Functions are curried by default and take target collections last. We can easily create comparators and predicates like `byPubDate` and `beforeToday` without resorting to arrow functions.
+
+A sequence of operations can be expressed with the `pipe` function rather than nested invocations. This results in expression that reads relatively naturally: "keep only articles with a pubDate of which only ones before today and sort everything by the pubDate".
+
+This allows me to write drafts without accidentally publishing them during a deploy. A good platform should also check the git branch and only deploy previews of secondary branches, but that is not always the case.
+
+```astro
+---
+// src/pages/article/[...slug].astro
+import '…';
+
+export async function getStaticPaths() {
+    const articles = await getPublishedArticles();
+
+    return articles.map(article => ({
+        params: { slug: article.slug },
+        props: { article },
+    }));
+}
+
+type Props = {
+    article: Article;
+}
+
+const { article } = Astro.props;
+const { Content } = await article.render();
+---
+
+<ContentLayout title={article.data.title} description={article.data.summary}>
+    <article>
+        <div class="rounded-box overflow-hidden mb-8">
+            <Hero bgImage={article.data.image} altText={article.data.altText}>
+                <h1 class="mb-5 text-5xl font-bold">{article.data.title}</h1>
+                <p class="mb-5 backdrop-blur-md backdrop-brightness-90 rounded-box p-4">{article.data.summary}</p>
+            </Hero>
+        </div>
+
+        <div class="mx-auto">
+            <div class="text-right">
+				asDateString(article.data.pubDate)
+                {article.data.modDate &&
+                    <div class="text-sm italic">
+                        Edited {asDateString(article.data.modDate)}
+                    </div>
+                }
+            </div>
+            <div class="prose md:prose-lg lg:prose-xl dark:prose-invert mb-16 mx-auto">
+                <Content/>
+            </div>
+			…
+        </div>
+    </article>
+</ContentLayout>
+```
+
+Rendering the markdown is handled by Astro's [CollectionEntry.render](https://docs.astro.build/en/reference/api-reference/#render).  Pay attention to the div surrounding `<Content />`, however. With tailwind installed, all default styles are supressed so things like section headers, italics, lists, etc show up as plain text.
+
+Adding tailwind classes to pure markdown elements isn't an option. We could embed HTML with styling classes into the markdown, but that largely defeats the purpose of markdown. It seems the only sensible option is to write CSS rules to restore styling to all elements in our rendered markdown. *Quite tedious!*
+This is where the [typography plugin](https://daisyui.com/docs/layout-and-typography/) comes to the rescue. The `prose` class and friends do that for us, more or less.
+
+## Tagging
+Without client-side scripting or a server-side search API, finding articles pertaining to specific topics can be challenging. Tags can alleviate this to a degree with relatively low cost.
+
+```typescript
+// src/lib/data.ts
+…
+export async function getTagMap(): Promise<Map<string, Article[]>> {
+    const articles = await getPublishedArticles();
+    const tags = {} as Map<string, Article[]>;
+
+    articles.forEach(article => {
+        article.data.tags.forEach(tag => {
+            tags[tag] = [...(tags[tag] ?? []), article]
+        });
+    });
+
+    // @ts-ignore
+    return R.map((articles: Article[]) => R.sort(byPubDate, articles))(tags);
+}
+```
+
+While ramda has a `groupBy` function, I couldn't figure out how to create an FP tag indexer more cleanly than this imperative implementation, given that each article has a set of tags rather than a single tag. It's certainyl doable with helper functions but this is sufficient for our purposes.
+
+Displaying a tag tree is straightforward:
+
+```astro
+---
+import '…';
+
+const tagMap = await getTagMap();
+---
+<ContentLayout title="All tags">
+    <h1 class="text-center tracking-wide text-6xl font-bold mb-8">Tags</h1>
+    <div>
+    {R.toPairs(tagMap).map(([tag, articles]) =>
+        <h4><a class="badge badge-outline" href={`/tag/${tag}`}>{tag}</a></h4>
+        <div>
+            <ul class="list-disc ml-6 mb-4">
+                {articles.map(article => 
+                    <li><a href={`/article/${article.slug}`}>{article.data.title}</a></li>
+                )}
+            </ul>
+        </div>
+    )}
+    </div>
+</ContentLayout>
+```
+
+## Pagination
+- https://docs.astro.build/en/guides/routing/#pagination
+- https://daisyui.com/components/pagination/
+
+```astro
+---
+import '…';
+
+export async function getStaticPaths({ paginate }) {
+    const articles = await getPublishedArticles();
+    return paginate(articles, { pageSize: 20 });
+}
+
+type Props = {
+    page: Page<Article>;
+};
+
+const { page } = Astro.props;
+const articles  = page.data;
+---
+
+<ContentLayout title="Articles">
+    <ArticleGrid articles={articles} />
+
+    <div class="flex justify-center mt-8">
+        <div class="join">
+            {R.range(1, page.lastPage + 1).map(i =>
+                <a href={`/articles/${i}`}
+                    class={`join-item btn ${i === page.currentPage && 'btn-active'}`}>
+                    {i}
+                </a>
+            )}
+        </div>
+    </div>
+</ContentLayout>
+```
+
+## Dark mode
+Some people fully embrace the darkness, but others are ambivalent. I find dark mode unreadable outdoors but easier on the eyes inside. Let's add a way to toggle dark mode.
+DaisyUI makes this really easy with [theme controllers](https://daisyui.com/components/theme-controller/). Just plop it into the navbar and you're good to go... almost.
+
+Without client-side scripting it doesn't persist between sessions let alone pages.  We can write custom Javascript to load and store the value using cookies, local storage, etc. However, alpinejs provides an easy and lightweight declarative option. 
+
+```astro
+---
+// src/layouts/ContentLayout.astro
+…
+---
+
+…
+<nav x-data="{ darkMode: $persist(true) }">
+	…
+        <label class="flex cursor-pointer gap-2">
+            <SunIcon />
+            <input type="checkbox" value="dracula" class="toggle theme-controller" x-model="darkMode"/>
+            <MoonIcon />
+        </label>
+	…
+</nav>
+```
+
+Alpine is heavily inspired by Vue, but designed to be much lighter.  The `darkMode` variable is scoped to the navbar and automatically persisted to local storage.
+
+There's one last problem to deal with: navigating between pages can cause flashes as the default theme is replaced by the user preferred one. In Astro, we can emulate SPA-like page navigation with a single directive in the root layout:
+
+```astro
+---
+// src/layouts/ContentLayout.astro
+…
+---
+	…
+		<ViewTransitions />
+	</head>
+	…
+```
+
+Since the navbar is common to all pages, Astro doesn't need to reload it every time.
+
+## RSS
+Reading [Add an RSS feed](https://docs.astro.build/en/guides/rss/), you'll see that it's pretty easy to add an RSS feed for your entire site.
+What if you want multiple feeds, one for each tag, for instance?
+Since the RSS feed is actually an [API Endpoint](https://docs.astro.build/en/guides/endpoints/#static-file-endpoints), we can pre-render parameterized routes with `getStaticPaths()`, just like with the human-readable tag pages.
+
+```typescript
+// src/pages/rss/[tag].xml.ts
+export async function getStaticPaths() {
+  const tagMap = R.mergeRight(
+    await getTagMap(),
+    {all: await getPublishedArticles()});
+  
+  // Limit each feed to the last 20 posts
+  const tagHeads = R.map(R.take(20))(tagMap);
+
+  return R.toPairs(tagHeads).map(([tag, articles]) => ({
+    params: {tag},
+    props: {articles}
+  }));
+}
+```
+
+We can destructure the request context in the handler, and use that to return the content:
+
+```typescript
+// src/pages/rss/[tag].xml.ts
+export async function GET({params, props, site}) {
+  const { tag } = params;
+  const { articles } = props;
+
+  return rss({
+    title: `/dev/null: ${tag} posts`,
+    description: 'The Information Paradox',
+    site: site,
+    items: articles.map((post) => ({
+      title: post.data.title,
+      pubDate: post.data.pubDate,
+      description: post.data.summary,
+      link: `/article/${post.slug}`,
+    })),
+  });
+}
+```

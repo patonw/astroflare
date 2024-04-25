@@ -1,0 +1,140 @@
+---
+slug: build-a-blog-1
+title: Building this blog (part 1)
+summary: in the beginning...
+tags:
+  - astrojs
+  - nixos
+  - nodejs
+image: '/src/assets/images/black-hole-circuit.jpg'
+altText: "A black hole within a digital circuit"
+pubDate: 2024-04-24
+---
+import Callout from '../../components/Callout.astro';
+
+## Overview
+
+<Callout info>
+  This post doesn't cover working in Astro JS, just the preliminaries. Skip
+  ahead to the <a href="/article/build-a-blog-2">next article</a> if you're already set up.
+</Callout>
+
+This post is primarily to remind me how this is built, but maybe someone else will find it helpful.
+
+Tech stack:
+- Astro JS
+- Daisy UI
+- Ramda
+
+Astro is doing most of the heavy lifting as a component-oriented static site generator. Within Astro, I'm using Ramda for functional data processing. Most of the presentation layer code is Daisy UI, which is a Tailwind-based pure CSS component library. Client-side scripting is negligible: using Alpine for saving/loading dark mode state.
+
+These posts are managed as markdown files on local disk via an Astro content collection.
+They start life as my development notes and may occasionally get published as rough cuts. When that happens, I'll come back to expand them into grammatical sentences, while trying to preserve the content.
+
+Images are generated using Stable Diffusion variants. The prompts should appear as tooltips, if you're curious.  The content is written by my awkward self, though I'm not above having the LLM du jour (currently Claude) do a little proof-reading. Any AI generated text will be noted as such, usually in the context of working with language models (e.g. prompt engineering, fine-tuning, etc) or just poking fun at GenAI fails.
+
+## Project setup
+### Nix
+
+<Callout>
+  Nix is an excellent build tool and package manager. It can be used to create isolated environmens that won't affect the system or other development shells. This doesn't even scratch the surface of what nix is capable of, but useful in its own right.
+</Callout>
+
+Let's start with a very basic nix shell:
+
+```nix
+# shell.nix
+with import <nixpkgs> {};
+mkShell {
+  PROJECT_DIR = toString ./.;
+  packages = [
+    yarn
+    nodejs_21
+    nodePackages.wrangler
+  ];
+}
+```
+
+You can use direnv to automatically activate this environment when working in this directory.
+
+```shell
+# .envrc
+source_up_if_exists
+layout node
+use nix
+```
+
+I suggest placing `.envrc` into your `.gitignore` when working in a shared repository. There is the possibility of running arbitrary shell commands on a pull otherwise.
+
+### yarn create
+With that ready, let's initialize the project. You can initialize the project to target your preferred deployment target (Vercel, Netlify, roll-your-own VPS, etc), but I'm going with Cloudflare for this round.
+
+```shell
+$ yarn create cloudflare astroflare -- --framework=astro
+```
+
+Don't include sample files, just select the "Empty" template.
+
+Strict Typescript will be needed for Astro content collections.
+
+You can let it deploy the application, if wrangler is already setup, but since this is an empty project, there's not much to see.
+
+Start a local dev server with `yarn dev`...
+
+### patchelf
+<Callout info>
+    This section is only relevant when running a Cloudflare development server inside NixOS. If you're using nix on another distribution or operatoring system or targeting a different platform, skip ahead to the <a href="#dependencies">next section</a>.
+</Callout>
+
+... but the dev server doesn't quite work right. 
+
+```
+Error: spawn /code/webdev/astro-course/astroflare/node_modules/@cloudflare/workerd-linux-64/bin/workerd ENOENT
+    at ChildProcess._handle.onexit (node:internal/child_process:284:19)
+    at onErrorNT (node:internal/child_process:477:16)
+    at process.processTicksAndRejections (node:internal/process/task_queues:82:21)
+Emitted 'error' event on ChildProcess instance at:
+    at ChildProcess._handle.onexit (node:internal/child_process:290:12)
+    at onErrorNT (node:internal/child_process:477:16)
+  ...
+```
+
+A little digging [^1] reveals that Cloudflare's `workerd` is trying to load shared libraries from `/lib64` which isn't valid under NixOS. We can fix this with `patchelf`. However, any time a new package is installed, `workerd` gets overwritten. We can have yarn run patchelf after every install by adding a *postInstall* hook in `package.json`.
+
+[^1]: https://github.com/cloudflare/workerd/discussions/1515
+
+```json
+  "scripts": {
+    "postinstall": "command -v patchelf && patchelf --set-interpreter
+        $(ldd node_modules/@cloudflare/workerd-linux-64/bin/workerd |
+          grep -oh '/nix/store\\S*ld-linux\\S*')
+        node_modules/@cloudflare/workerd-linux-64/bin/workerd"
+  },
+```
+
+This will only run on systems with the `patchelf` command... so just NixOS. We could wrap the command with `writeShellScript` in shell.nix to make it a little cleaner, but this gets the job done.
+
+### Dependencies
+
+Let's add the dependencies we'll use later.
+
+```bash
+$ yarn astro add @astrojs/tailwind
+$ yarn astro add @astrojs/alpinejs
+$ yarn add daisyui ramda @tailwindcss/typography
+$ yarn add --dev @types/ramda
+```
+
+Unlike tailwind and alpinejs, @tailwindcss/typography is a plain NPM package instead of an Astro plugin. You'll need to configure it as a tailwind plugin in `tailwind.config.mjs`. According to the [Daisy UI documentation](https://daisyui.com/docs/layout-and-typography/#-1), order matters:
+
+```javascript
+	plugins: [
+		require('@tailwindcss/typography'),
+		require("daisyui"),
+	],
+```
+
+
+- - -
+
+Now we're ready to start coding. Read the [next part](/article/build-a-blog-2).
