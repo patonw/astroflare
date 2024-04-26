@@ -1,8 +1,11 @@
 ---
 import * as R from 'ramda';
+import { Image } from 'astro:assets';
+
 import { type Article, getTagMap } from '../../lib/data';
 import ArticleGrid from '../../components/ArticleGrid.astro';
 import ContentLayout from '../../layouts/ContentLayout.astro';
+import rssIcon from '../../assets/icons/rss.svg';
 
 export async function getStaticPaths() {
     const tags = await getTagMap();
@@ -13,15 +16,25 @@ export async function getStaticPaths() {
     }));
 }
 
+type Params = {
+    tag: string;
+};
+
 type Props = {
     articles: Article[];
-}
+};
 
-const { tag } = Astro.params;
+const { tag } = Astro.params as Params;
 const { articles } = Astro.props;
-
-console.log(articles)
 ---
+
 <ContentLayout title={tag}>
+    <h1 class="text-center tracking-wide text-6xl font-bold mb-8">
+        {tag}
+        <a href={`/rss/${tag}.xml`}>
+            <Image class="inline" width="32" height="32" src={rssIcon} alt="RSS"/>
+        </a>
+    </h1>
+
     <ArticleGrid articles={articles} />
 </ContentLayout>

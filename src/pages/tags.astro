@@ -1,15 +1,25 @@
 ---
 import * as R from 'ramda';
-import { getTagMap } from '../lib/data';
+import { Image } from 'astro:assets';
+
+import { getTagMap, type Article } from '../lib/data';
 import ContentLayout from '../layouts/ContentLayout.astro';
+import rssIcon from '../assets/icons/rss.svg';
 
 const tagMap = await getTagMap();
 ---
 <ContentLayout title="All tags">
     <h1 class="text-center tracking-wide text-6xl font-bold mb-8">Tags</h1>
     <div>
-    {R.toPairs(tagMap).map(([tag, articles]) =>
-        <h4><a class="badge badge-outline" href={`/tag/${tag}`}>{tag}</a></h4>
+
+    { //@ts-ignore
+    R.toPairs(tagMap).map(([tag, articles]: [string, Article[]]) =>
+        <h4>
+            <a class="badge badge-outline" href={`/tag/${tag}`}>{tag}</a>
+            <a href={`/rss/${tag}.xml`}>
+                <Image class="inline" width="16" height="16" src={rssIcon} alt="RSS"/>
+            </a>
+        </h4>
         <div>
             <ul class="list-disc ml-6 mb-4">
                 {articles.map(article => 
@@ -20,4 +30,3 @@ const tagMap = await getTagMap();
     )}
     </div>
 </ContentLayout>
-
